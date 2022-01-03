@@ -15,11 +15,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.URISyntaxException;
 import java.time.ZonedDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +55,7 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
   private static WeakHashMap<RDD<?>, Configuration> outputs = new WeakHashMap<>();
   private static ContextFactory contextFactory;
   private static JobMetricsHolder jobMetrics = JobMetricsHolder.getInstance();
+  private static HashMap<String, Object> dbProperties;
 
   /** called by the agent on init with the provided argument */
   public static void init(ContextFactory contextFactory) {
@@ -129,6 +126,7 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
   /** called by the SparkListener when a spark-sql (Dataset api) execution starts */
   private static void sparkSQLExecStart(SparkListenerSQLExecutionStart startEvent) {
     SparkSQLExecutionContext context = getSparkSQLExecutionContext(startEvent.executionId());
+    context.EnvironmentProperties = dbProperties;
     context.start(startEvent);
   }
 
@@ -168,10 +166,36 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
                 context = getExecutionContext(job.jobId());
               }
 
+              getDatabricksEnvironmentalAttributes(jobStart);
               context.setActiveJob(job);
               context.start(jobStart);
             });
   }
+
+  private HashMap<String, Object> getDatabricksEnvironmentalAttributes(SparkListenerJobStart jobStart){
+    dbProperties = new HashMap<>();
+    List<String> dbPropertiesKeys = Arrays.asList(
+            "orgId",
+            "spark.databricks.clusterUsageTags.clusterOwnerOrgId",
+            "spark.databricks.notebook.path",
+            "spark.databricks.job.type",
+            "spark.databricks.job.id",
+            "spark.databricks.job.runId",
+            "user",
+            "userId",
+            "spark.databricks.clusterUsageTags.clusterName",
+            "spark.databricks.clusterUsageTags.azureSubscriptionId"
+    );
+
+    dbPropertiesKeys.stream().forEach((p) -> {
+      dbProperties.put(p,jobStart.properties().getProperty(p));
+    });
+
+
+    return  dbProperties;
+  }
+
+
 
   /** called by the SparkListener when a job ends */
   @Override

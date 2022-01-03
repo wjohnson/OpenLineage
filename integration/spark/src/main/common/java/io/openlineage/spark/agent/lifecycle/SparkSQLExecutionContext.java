@@ -7,27 +7,24 @@ import io.openlineage.client.OpenLineage.InputDataset;
 import io.openlineage.spark.agent.EventEmitter;
 import io.openlineage.spark.agent.JobMetricsHolder;
 import io.openlineage.spark.agent.client.OpenLineageClient;
-import io.openlineage.spark.agent.facets.ErrorFacet;
-import io.openlineage.spark.agent.facets.LogicalPlanFacet;
-import io.openlineage.spark.agent.facets.SparkVersionFacet;
-import io.openlineage.spark.agent.facets.UnknownEntryFacet;
+import io.openlineage.spark.agent.facets.*;
 import io.openlineage.spark.agent.lifecycle.plan.QueryPlanVisitor;
 import io.openlineage.spark.agent.util.PlanUtils;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.*;
 import java.util.AbstractMap.SimpleImmutableEntry;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkContext;
 import org.apache.spark.scheduler.ActiveJob;
 import org.apache.spark.scheduler.JobFailed;
@@ -64,6 +61,7 @@ public class SparkSQLExecutionContext implements ExecutionContext {
   private AtomicBoolean started = new AtomicBoolean(false);
   private AtomicBoolean finished = new AtomicBoolean(false);
   private Optional<Integer> jobId = Optional.empty();
+  public HashMap<String, Object> EnvironmentProperties;
 
   public SparkSQLExecutionContext(
       long executionId,
@@ -138,6 +136,10 @@ public class SparkSQLExecutionContext implements ExecutionContext {
     UnknownEntryFacet unknownFacet =
         unknownEntryFacetListener.build(queryExecution.optimizedPlan()).orElse(null);
 
+    //add mount points info
+    EnvironmentProperties.put("mount-points",getDatabricksMounts());
+    EnvironmentFacet environmentFacet = new EnvironmentFacet(EnvironmentProperties);
+
     OpenLineage.RunEvent event =
         openLineage
             .newRunEventBuilder()
@@ -153,6 +155,7 @@ public class SparkSQLExecutionContext implements ExecutionContext {
                             "spark.logicalPlan",
                             buildLogicalPlanFacet(queryExecution.optimizedPlan())),
                         new SimpleImmutableEntry("spark_unknown", unknownFacet),
+                        new SimpleImmutableEntry("databricks_env", environmentFacet),
                         new SimpleImmutableEntry(
                             "spark_version", new SparkVersionFacet(SparkSession.active())))))
             .job(buildJob(queryExecution))
@@ -220,6 +223,9 @@ public class SparkSQLExecutionContext implements ExecutionContext {
 
     List<InputDataset> inputDatasets = getInputDatasets();
     UnknownEntryFacet unknownFacet = unknownEntryFacetListener.build(optimizedPlan).orElse(null);
+    //add mount points info
+    EnvironmentProperties.put("mount-points",getDatabricksMounts());
+    EnvironmentFacet environmentFacet = new EnvironmentFacet(EnvironmentProperties);
 
     OpenLineage.RunEvent event =
         openLineage
@@ -237,6 +243,7 @@ public class SparkSQLExecutionContext implements ExecutionContext {
                         new SimpleImmutableEntry(
                             "spark.exception", buildJobErrorFacet(eventType, exception)),
                         new SimpleImmutableEntry("spark_unknown", unknownFacet),
+                        new SimpleImmutableEntry("databricks_env", environmentFacet),
                         new SimpleImmutableEntry(
                             "spark_version", new SparkVersionFacet(SparkSession.active())))))
             .job(buildJob(queryExecution))
@@ -244,6 +251,17 @@ public class SparkSQLExecutionContext implements ExecutionContext {
 
     log.debug("Posting event for end {}: {}", executionId, event);
     sparkContext.emit(event);
+  }
+
+  @SneakyThrows
+  private List<String> getDatabricksMounts() {
+    List<String> mountPoints = new ArrayList<String>();
+    val fs  = FileSystem.get(new Configuration());
+    FileStatus[] fileStatus = fs.listStatus(new Path(fs.getUri().toString()));
+    for(FileStatus status : fileStatus) {
+      mountPoints.add(status.getPath().toString());
+    }
+    return mountPoints;
   }
 
   private List<OpenLineage.OutputDataset> populateOutputMetrics(
