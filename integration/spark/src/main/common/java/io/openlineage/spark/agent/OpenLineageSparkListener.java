@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.spark.SparkConf;
@@ -165,7 +166,6 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
               } else {
                 context = getExecutionContext(job.jobId());
               }
-
               getDatabricksEnvironmentalAttributes(jobStart);
               context.setActiveJob(job);
               context.start(jobStart);

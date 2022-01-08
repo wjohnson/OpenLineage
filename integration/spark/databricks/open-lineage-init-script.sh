@@ -1,6 +1,6 @@
 #!/bin/bash
 
-STAGE_DIR="/dbfs/databricks/openlineage_harish"
+STAGE_DIR="/dbfs/databricks/openlineage"
 
 echo "BEGIN: Upload Spark Listener JARs"
 cp -f $STAGE_DIR/openlineage-spark-*.jar /mnt/driver-daemon/jars || { echo "Error copying Spark Listener library file"; exit 1;}

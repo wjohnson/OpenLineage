@@ -5,19 +5,19 @@
 #
 
 Write-Output "Creating DBFS direcrtory"
-$DBFS_OPENLINEAGE_DIR = "openlineage_harish"
+$DBFS_OPENLINEAGE_DIR = "openlineage"
 dbfs mkdirs dbfs:/databricks/$DBFS_OPENLINEAGE_DIR
 
 Write-Output "Uploading custom Spark Listener library"
 # Create a for loop here
-$BUILD_PATH = "../build/libs/"
+$BUILD_PATH = "./build/libs/"
 Get-ChildItem -Path $BUILD_PATH |
 ForEach-Object {
     dbfs cp --overwrite $_.FullName     dbfs:/databricks/$DBFS_OPENLINEAGE_DIR/
 }
 
 Write-Output "Uploading cluster init script"
-dbfs cp --overwrite ./open-lineage-init-script.sh           dbfs:/databricks/$DBFS_OPENLINEAGE_DIR/open-lineage-init-script.sh
+dbfs cp --overwrite ./databricks/open-lineage-init-script.sh           dbfs:/databricks/$DBFS_OPENLINEAGE_DIR/open-lineage-init-script.sh
 
 Write-Output "Listing DBFS directory"
 dbfs ls dbfs:/databricks/$DBFS_OPENLINEAGE_DIR
