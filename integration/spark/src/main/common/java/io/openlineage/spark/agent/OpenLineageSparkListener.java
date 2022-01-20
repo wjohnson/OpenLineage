@@ -13,16 +13,12 @@ import io.openlineage.spark.agent.transformers.PairRDDFunctionsTransformer;
 import io.openlineage.spark.agent.util.ScalaConversionUtils;
 import java.io.*;
 import java.lang.reflect.Field;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.spark.SparkConf;
@@ -41,7 +37,6 @@ import org.apache.spark.scheduler.SparkListenerTaskEnd;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd;
 import org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionStart;
-import org.json.simple.parser.JSONParser;
 import scala.Function0;
 import scala.Function1;
 import scala.Option;
@@ -50,9 +45,9 @@ import scala.Option;
 public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkListener {
 
   private static final Map<Long, ExecutionContext> sparkSqlExecutionRegistry =
-      Collections.synchronizedMap(new HashMap<>());
+          Collections.synchronizedMap(new HashMap<>());
   private static final Map<Integer, ExecutionContext> rddExecutionRegistry =
-      Collections.synchronizedMap(new HashMap<>());
+          Collections.synchronizedMap(new HashMap<>());
   public static final String SPARK_CONF_URL_KEY = "openlineage.url";
   public static final String SPARK_CONF_HOST_KEY = "openlineage.host";
   public static final String SPARK_CONF_API_VERSION_KEY = "openlineage.version";
@@ -64,7 +59,10 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
   private static WeakHashMap<RDD<?>, Configuration> outputs = new WeakHashMap<>();
   private static ContextFactory contextFactory;
   private static JobMetricsHolder jobMetrics = JobMetricsHolder.getInstance();
-  private static HashMap<String, Object> dbProperties;
+  private final Function1<SparkSession, SparkContext> sparkContextFromSession =
+          ScalaConversionUtils.toScalaFn(SparkSession::sparkContext);
+  private final Function0<Option<SparkContext>> activeSparkContext =
+          ScalaConversionUtils.toScalaFn(SparkContext$.MODULE$::getActive);
 
   /** called by the agent on init with the provided argument */
   public static void init(ContextFactory contextFactory) {
@@ -135,7 +133,7 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
   /** called by the SparkListener when a spark-sql (Dataset api) execution starts */
   private static void sparkSQLExecStart(SparkListenerSQLExecutionStart startEvent) {
     ExecutionContext context = getSparkSQLExecutionContext(startEvent.executionId());
-    context.EnvironmentProperties = dbProperties;
+   // context.EnvironmentProperties = dbProperties;
     context.start(startEvent);
   }
 
@@ -150,6 +148,8 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
   /** called by the SparkListener when a job starts */
   @Override
   public void onJobStart(SparkListenerJobStart jobStart) {
+    contextFactory.properties= jobStart.properties();
+
     Optional<ActiveJob> activeJob =
         asJavaOptional(
                 SparkSession.getDefaultSession()
@@ -198,79 +198,7 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
     return properties.getProperty("spark.sql.execution.id");
   }
 
-  private HashMap<String, Object> getDatabricksEnvironmentalAttributes(SparkListenerJobStart jobStart){
-    dbProperties = new HashMap<>();
-    String urlString = "http://"+jobStart.properties().getProperty("spark.databricks.clusterUsageTags.driverInstancePrivateIp")+":7070/?type=%22com.databricks.backend.daemon.data.common.DataMessages$GetMountsV2%22";
 
-    List<String> dbPropertiesKeys = Arrays.asList(
-            "orgId",
-            "spark.databricks.clusterUsageTags.clusterOwnerOrgId",
-            "spark.databricks.notebook.path",
-            "spark.databricks.job.type",
-            "spark.databricks.job.id",
-            "spark.databricks.job.runId",
-            "user",
-            "userId",
-            "spark.databricks.clusterUsageTags.clusterName",
-            "spark.databricks.clusterUsageTags.azureSubscriptionId"
-    );
-
-    dbPropertiesKeys.stream().forEach((p) -> {
-      dbProperties.put(p,jobStart.properties().getProperty(p));
-    });
-
-    dbProperties.put("mountPoints", getDatabricksMountpoints(urlString));
-
-    return  dbProperties;
-  }
-
-  private static List<Map<String,String>> getDatabricksMountpoints(String urlString){
-    List<Map<String,String>> mapList = new ArrayList<>();
-//    HashMap<String,String> values = new HashMap<>();
-    try {
-      URL url = new URL(urlString);
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-      conn.setRequestMethod("GET");
-      conn.setRequestProperty("Accept", "application/json");
-      conn.setRequestProperty("Content-Type", "application/json");
-      conn.setRequestProperty("Sessionid","1234");
-      conn.setRequestProperty("Auth","{}");
-      conn.setRequestProperty("authType","com.databricks.backend.daemon.data.common.DbfsAuth");
-      String jsonInputString = "{}";
-      conn.setDoOutput(true);
-      conn.setDoInput(true);
-
-      conn.getOutputStream().write(jsonInputString.getBytes("UTF-8"));
-      Reader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
-      StringBuilder sb = new StringBuilder();
-      for (int c; (c = in.read()) >= 0;)
-        sb.append((char)c);
-
-      JSONParser parser = new JSONParser();
-      org.json.simple.JSONArray jsonArray = (org.json.simple.JSONArray)parser.parse(sb.toString());
-
-      jsonArray.forEach(x-> {
-        HashMap<String,String> values = new HashMap<>();
-
-        values.put("MountPoint",((org.json.simple.JSONObject)x).get("mountPointString").toString());
-        values.put("Source",((org.json.simple.JSONObject)x).get("sourceString").toString());
-
-        mapList.add(values);
-      });
-
-//      jsonArray.forEach(x-> {
-//
-//        values.put(((org.json.simple.JSONObject)x).get("mountPointString").toString(),((org.json.simple.JSONObject)x).get("sourceString").toString());
-//      });
-
-      conn.disconnect();
-
-    } catch (Exception e) {
-      log.warn("Error while getting mount points");
-    }
-    return  mapList;
-//    return values;
-  }
 
 
   /** called by the SparkListener when a job ends */

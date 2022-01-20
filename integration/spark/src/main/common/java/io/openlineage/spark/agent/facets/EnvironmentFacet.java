@@ -5,7 +5,6 @@ import io.openlineage.client.OpenLineage;
 import io.openlineage.spark.agent.client.OpenLineageClient;
 
 import java.util.HashMap;
-import java.util.List;
 
 
 public class EnvironmentFacet extends OpenLineage.DefaultRunFacet {

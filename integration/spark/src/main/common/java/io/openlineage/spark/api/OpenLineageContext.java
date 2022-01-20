@@ -3,10 +3,9 @@ package io.openlineage.spark.api;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.OpenLineage.InputDataset;
 import io.openlineage.client.OpenLineage.OutputDataset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+
+import java.util.*;
+
 import lombok.Builder;
 import lombok.Builder.Default;
 import lombok.NonNull;
@@ -53,6 +52,7 @@ public class OpenLineageContext {
    */
   @NonNull OpenLineage openLineage;
 
+  @NonNull Properties properties;
   /**
    * A non-null, but potentially empty, list of {@link LogicalPlan} visitors that can extract {@link
    * InputDataset}s from plan nodes. Useful for delegating from general input visitors to more
