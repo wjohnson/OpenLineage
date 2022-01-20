@@ -1,6 +1,5 @@
 package io.openlineage.spark.agent.facets.builder;
 
-import com.databricks.dbutils_v1.DBUtilsHolder$;
 import io.openlineage.spark.agent.facets.EnvironmentFacet;
 import io.openlineage.spark.api.CustomFacetBuilder;
 
@@ -14,7 +13,6 @@ import java.util.function.BiConsumer;
 
 import io.openlineage.spark.api.OpenLineageContext;
 import org.apache.spark.scheduler.SparkListenerEvent;
-import org.apache.spark.scheduler.SparkListenerJobStart;
 import org.json.simple.parser.JSONParser;
 
 public class EnvironmentFacetBuilder extends CustomFacetBuilder<SparkListenerEvent, EnvironmentFacet> {
@@ -29,7 +27,9 @@ public class EnvironmentFacetBuilder extends CustomFacetBuilder<SparkListenerEve
 
     @Override
     protected void build(SparkListenerEvent event, BiConsumer<String, ? super EnvironmentFacet> consumer) {
-        consumer.accept("environment-properties", new EnvironmentFacet(getDatabricksEnvironmentalAttributes(event)));
+        if(System.getenv().containsKey("DATABRICKS_RUNTIME_VERSION")) {
+            consumer.accept("environment-properties", new EnvironmentFacet(getDatabricksEnvironmentalAttributes(event)));
+        }
     }
 
     private HashMap<String, Object> getDatabricksEnvironmentalAttributes(SparkListenerEvent jobStart) {

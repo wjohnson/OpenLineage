@@ -133,7 +133,6 @@ public class OpenLineageSparkListener extends org.apache.spark.scheduler.SparkLi
   /** called by the SparkListener when a spark-sql (Dataset api) execution starts */
   private static void sparkSQLExecStart(SparkListenerSQLExecutionStart startEvent) {
     ExecutionContext context = getSparkSQLExecutionContext(startEvent.executionId());
-   // context.EnvironmentProperties = dbProperties;
     context.start(startEvent);
   }
 
