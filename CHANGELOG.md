@@ -1,9 +1,16 @@
 # Changelog
 
-## [Unreleased](https://github.com/OpenLineage/OpenLineage/compare/0.4.0...HEAD)
+## [Unreleased](https://github.com/OpenLineage/OpenLineage/compare/0.5.1...HEAD)
+
+## [0.5.1](https://github.com/OpenLineage/OpenLineage/compare/0.4.0...0.5.1)
+### Added
+* Support for dbt-spark adapter [@mobuchowski](https://github.com/mobuchowski)
+* **New** `backend` to proxy OpenLineage events to one or more event streams 🎉 [@mandy-chessell](https://github.com/mandy-chessell) [@wslulciuc](https://github.com/wslulciuc)
+* Add Spark extensibility API with support for custom Dataset and custom facet builders [@collado-mike](https://github.com/collado-mike)
 
 ### Fixed
 * airflow: fix import failures when dependencies for bigquery, dbt, great_expectations extractors are missing [@lukaszlaszko](https://github.com/lukaszlaszko)
+* Fixed openlineage-spark jar to correctly rename bundled dependencies [@collado-mike](https://github.com/collado-mike)
 
 ## [0.4.0](https://github.com/OpenLineage/OpenLineage/releases/tag/0.4.0) - 2021-12-13
 

@@ -5,6 +5,7 @@ import io.openlineage.spark.agent.client.OpenLineageClient;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.PartialFunction;
 import scala.PartialFunction$;
+import scala.runtime.AbstractPartialFunction;
 
 /**
  * Utility functions for traversing a {@link
@@ -56,8 +58,26 @@ public class PlanUtils {
    * @param <R>
    * @return
    */
-  public static <T, R> PartialFunction<T, R> merge(List<? extends PartialFunction<T, R>> fns) {
+  public static <T, R> PartialFunction<T, R> merge(
+      Collection<? extends PartialFunction<T, R>> fns) {
     return fns.stream()
+        .map(
+            pfn ->
+                new AbstractPartialFunction<T, R>() {
+                  @Override
+                  public boolean isDefinedAt(T x) {
+                    try {
+                      return pfn.isDefinedAt(x);
+                    } catch (ClassCastException e) {
+                      return false;
+                    }
+                  }
+
+                  @Override
+                  public R apply(T x) {
+                    return pfn.apply(x);
+                  }
+                })
         .map(PartialFunction.class::cast)
         .reduce(PartialFunction::orElse)
         .orElse(PartialFunction$.MODULE$.empty());
