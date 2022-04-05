@@ -59,7 +59,8 @@ public class DatabricksEnvironmentFacetBuilder
             "user",
             "userId",
             "spark.databricks.clusterUsageTags.clusterName",
-            "spark.databricks.clusterUsageTags.azureSubscriptionId");
+            "spark.databricks.clusterUsageTags.azureSubscriptionId",
+            "spark.sql.execution.parent");
     dbPropertiesKeys.stream()
         .forEach(
             (p) -> {
