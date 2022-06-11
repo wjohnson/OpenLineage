@@ -68,7 +68,6 @@ class SparkSQLExecutionContext implements ExecutionContext {
     }
     RunEvent event =
         runEventBuilder.buildRun(
-            buildParentFacet(),
             openLineage.newRunEventBuilder().eventTime(toZonedTime(startEvent.time())),
             buildJob(olContext.getQueryExecution().get()),
             startEvent);
@@ -93,7 +92,6 @@ class SparkSQLExecutionContext implements ExecutionContext {
     }
     RunEvent event =
         runEventBuilder.buildRun(
-            buildParentFacet(),
             openLineage.newRunEventBuilder().eventTime(toZonedTime(endEvent.time())),
             buildJob(olContext.getQueryExecution().get()),
             endEvent);
@@ -115,7 +113,6 @@ class SparkSQLExecutionContext implements ExecutionContext {
     }
     RunEvent event =
         runEventBuilder.buildRun(
-            buildParentFacet(),
             openLineage.newRunEventBuilder().eventTime(ZonedDateTime.now(ZoneOffset.UTC)),
             buildJob(olContext.getQueryExecution().get()),
             stageSubmitted);
@@ -137,7 +134,6 @@ class SparkSQLExecutionContext implements ExecutionContext {
     }
     RunEvent event =
         runEventBuilder.buildRun(
-            buildParentFacet(),
             openLineage.newRunEventBuilder().eventTime(ZonedDateTime.now(ZoneOffset.UTC)),
             buildJob(olContext.getQueryExecution().get()),
             stageCompleted);
@@ -165,7 +161,6 @@ class SparkSQLExecutionContext implements ExecutionContext {
     }
     RunEvent event =
         runEventBuilder.buildRun(
-            buildParentFacet(),
             openLineage.newRunEventBuilder().eventTime(toZonedTime(jobStart.time())),
             buildJob(olContext.getQueryExecution().get()),
             jobStart);
@@ -192,7 +187,6 @@ class SparkSQLExecutionContext implements ExecutionContext {
     }
     RunEvent event =
         runEventBuilder.buildRun(
-            buildParentFacet(),
             openLineage.newRunEventBuilder().eventTime(toZonedTime(jobEnd.time())),
             buildJob(olContext.getQueryExecution().get()),
             jobEnd);
