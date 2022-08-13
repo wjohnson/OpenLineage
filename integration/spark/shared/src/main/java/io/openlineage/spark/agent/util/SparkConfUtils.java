@@ -11,9 +11,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.SparkConf;
 import scala.Option;
 
+@Slf4j
 public class SparkConfUtils {
   private static final String metastoreUriKey = "spark.sql.hive.metastore.uris";
   private static final String metastoreHadoopUriKey = "spark.hadoop.hive.metastore.uris";
@@ -23,7 +25,9 @@ public class SparkConfUtils {
   }
 
   public static Optional<String> findSparkConfigKey(SparkConf conf, String name) {
+    log.info("Trying to get opt from conf");
     Option<String> opt = conf.getOption(name);
+    log.info("Managed to get opt from conf - not getting here");
     if (opt.isDefined()) {
       return Optional.of(opt.get());
     }
